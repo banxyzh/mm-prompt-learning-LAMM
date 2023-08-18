@@ -43,4 +43,47 @@ class OxfordFlowers(DatasetBase):
                     train, val = data["train"], data["val"]
             else:
                 train = self.generate_fewshot_dataset(train, num_shots=num_shots)
-                val = self.generate_fewshot_dataset(
+                val = self.generate_fewshot_dataset(val, num_shots=min(num_shots, 4))
+                data = {"train": train, "val": val}
+                print(f"Saving preprocessed few-shot data to {preprocessed}")
+                with open(preprocessed, "wb") as file:
+                    pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+        subsample = cfg.DATASET.SUBSAMPLE_CLASSES
+        train, val, test = OxfordPets.subsample_classes(train, val, test, subsample=subsample)
+
+        super().__init__(train_x=train, val=val, test=test)
+
+    def read_data(self):
+        tracker = defaultdict(list)
+        label_file = loadmat(self.label_file)["labels"][0]
+        for i, label in enumerate(label_file):
+            imname = f"image_{str(i + 1).zfill(5)}.jpg"
+            impath = os.path.join(self.image_dir, imname)
+            label = int(label)
+            tracker[label].append(impath)
+
+        print("Splitting data into 50% train, 20% val, and 30% test")
+
+        def _collate(ims, y, c):
+            items = []
+            for im in ims:
+                item = Datum(impath=im, label=y - 1, classname=c)  # convert to 0-based label
+                items.append(item)
+            return items
+
+        lab2cname = read_json(self.lab2cname_file)
+        train, val, test = [], [], []
+        for label, impaths in tracker.items():
+            random.shuffle(impaths)
+            n_total = len(impaths)
+            n_train = round(n_total * 0.5)
+            n_val = round(n_total * 0.2)
+            n_test = n_total - n_train - n_val
+            assert n_train > 0 and n_val > 0 and n_test > 0
+            cname = lab2cname[str(label)]
+            train.extend(_collate(impaths[:n_train], label, cname))
+            val.extend(_collate(impaths[n_train : n_train + n_val], label, cname))
+            test.extend(_collate(impaths[n_train + n_val :], label, cname))
+
+        return train, val, test
