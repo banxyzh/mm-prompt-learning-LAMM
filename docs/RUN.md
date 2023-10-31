@@ -42,4 +42,28 @@ Below, we provide instructions to train MaPLe+LAMM on all datasets and seed 1, 2
 bash scripts/maple/base_train_maple_lamm_all.sh
 ```
 
-Now use the script `parse_test_res.py` and run the commands below to calculate t
+Now use the script `parse_test_res.py` and run the commands below to calculate the averaged results:
+```bash
+# prints averaged results
+python parse_test_res.py output/base/dataset/shots_16/LAMM/vit_b16_ep50_ctxv1
+```
+
+## Incremental Training of LAMM
+
+We tested our results by training on set1 and set2 respectively.
+```bash
+bash scripts/lamm/base2new_train_set1_lamm_all.sh
+bash scripts/lamm/base2new_train_set2_lamm_all.sh
+```
+
+## Domain Generalization Test
+Since we have already train imagenet, we only need to evaluate the results of other domains.
+
+```bash
+bash scripts/lamm/base_test_cross_imagenet_lamm.sh
+```
+
+## Baselines of CoOp and MaPLe
+
+We directly run the CoOp and MaPLe baselines on [MaPLe](https://github.com/muzairkhattak/multimodal-prompt-learning) project. 
+
